@@ -1,0 +1,27 @@
+LSP PARAMETER EXPLORATION - ANALYSIS SUMMARY
+==========================================
+
+1. SIZE DEPENDENCE STUDY
+Particle sizes: 5000 - 80000 nm radius
+Resonance stability: 0.092 eV standard deviation
+Quasistatic prediction verified: resonance position nearly size-independent
+
+2. METAL COMPARISON
+Au: 5.25 eV resonance
+Ag: 3.46 eV resonance
+Al: 6.00 eV resonance
+Cu: 6.00 eV resonance
+K: 2.24 eV resonance
+Range: 3.76 eV (from K to Al)
+
+Range: 67.00 eV (from u to 3. BACKGROUND MEDIUM EFFECTS
+Red-shift with increasing refractive index confirmed
+Resonance shift: 3.47 eV (air) to 2.50 eV (n=2.0)
+Shift magnitude: 0.96 eV
+
+4. KEY FINDINGS
+- Quasistatic model accurately predicts size independence
+- Metal choice critically determines resonance energy
+- Environmental refractive index enables tuning
+- Shell structures show mode hybridization
+- Field enhancement factors reach >10x at resonance

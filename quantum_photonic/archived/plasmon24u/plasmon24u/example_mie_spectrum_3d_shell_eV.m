@@ -1,0 +1,217 @@
+%% 
+% EM response of a small sphere using Mie theory
+%
+% wave is incident from -z -> +z
+% polarized Ex
+%
+% plots a spectrum (Figure 1) and identifies peaks
+% plots scatter on polar plot (u=unpolar, s=perp to plane, p=par to plane)
+% plots fields on slices & power flow as red lines
+
+%% cleanup
+clear
+close all
+clc
+
+%% particle parameters
+a=0.020; % sphere radius (in microns)
+f=0.01; % fraction of volume occupied by metal
+nc=1.5; % core index (e.g. core is silica nanoparticle)
+nb=1.5; % background index (e.g. immersed in water or glass)
+metal='Au'; % metal of shell
+[et,Lt]=feval(['eps',metal]); % check material table
+Lmin = min(Lt); % ensure valid min L
+Lmin = min(Lt(real(et)<0)); % only include et<0
+eV = 1.24*linspace(0,1,1e3).'/Lmin; % use frequency scale (bounded)
+eV = eV(eV>0); % avoid zero
+% could also have lower cutoff at damping energy (with some difficulty)
+L = 1.24./eV; % wavelength
+
+%% plotting options
+% slice plot
+do_fields=1; % set to zero to speed up
+% field to be plotted
+% for |E| use e
+% for Re(E_x) use real(E.x)
+% for Im(E_x) use imag(E.x)
+
+slicef='e';
+nbox=20; % number of samples per diameter
+sbox=[2,2,4]; % size of in diameters
+
+% power flow options (from fields) - in red
+do_lines=1;
+do_ribbons=0;
+do_tubes=0;
+
+%%
+N=10; % number of orders: should be large enough to converge
+fm=['eps',metal];
+m=[nc*ones(size(L)), sqrt(feval(fm,L)), nb*ones(size(L))]; % refractive indices, inner to outer
+av = a*[(1-f)^(1/3), 1]; % radii of surfaces
+vol=4*pi/3*a^3;
+area=pi*a^2;
+
+% energy scale
+%xunit = '\mum'; xlab=['\lambda / ', xunit]; fx=@(x) x;
+%xunit = '\nm'; xlab=['\lambda / ', xunit]; fx=@(x) x*1e3;
+xunit = 'eV'; xlab=xunit; fx=@(x) 1.24./x;
+
+% section scale
+% notice that T = exp(-C*rho_v*x)... rho is volume concentration
+%ylab='C / nm^2';
+%ylab='Q = C / A';
+ylab='C / V / k';
+
+%% calculate spectrum
+mu=ones(size(m));
+C=nan([length(L),3]);
+Ls=nan(size(L));
+set(gca,'ColorOrderIndex',1);
+tic
+for k=1:length(L) % wavelength loop
+    L1=L(k);
+    coeffs=fmiecoeff(N, L1, av, m(k,:), mu(k,:)); % expansion coefficients
+    C1=crosssection(coeffs, L1, av, m(k,:)); % calculate efficiencies
+    switch ylab(1)
+        case 'C'
+            C1=C1*1e6; % convert to nm^2
+        case 'Q'
+            C1=C1/area; % "efficiency" Q, dimensionless
+        case '?'
+            C1=C1/vol/(2*pi/L1); % C/vol/k, dimensionless
+    end
+    C(k,:)=C1;
+    Ls(k)=fx(L(k));
+    
+    % plot (update)
+    if (k==1)||(k==length(L))||(toc>0.2)
+        plot(Ls,C)
+        drawnow
+        pause(0)
+        tic
+    end
+end
+
+% finish graph
+title(sprintf('%s shell, r=%g nm, f=%g',metal, a*1e3, f))
+xlabel(xlab)
+ylabel(ylab)
+
+%% find & plot peaks
+[Cmax,ind]=max(C); CmaxL=Ls(ind);
+hold('on')
+set(gca,'ColorOrderIndex',1);
+ms=12;
+for k=1:3
+    plot(CmaxL(k),Cmax(k),'.','MarkerSize',ms)
+    text(CmaxL(k),Cmax(k),sprintf('(%g,%0.2E)',CmaxL(k),Cmax(k)))
+end
+
+%%
+% legend has to be last to avoid additional entries
+legend('ext','abs','sca','Location','NorthEastOutside')
+
+%% do peaks (one for abs & one for sca)
+figure
+set(gcf,'Position',get(0,'ScreenSize'))
+for peak=1:2
+    % peak info
+    Ls1=CmaxL(peak+1);
+    [~,k]=min(abs(Ls-Ls1));
+    L1=L(k); % wavelength - must be in microns
+    
+    % coeffs
+    coeffs=fmiecoeff(N, L1, av, m(k,:), mu(k,:)); % calc coeffs
+    
+    %% far field plot
+    thetav=linspace(-180,180);
+    thetar=thetav/180*pi;
+    [S1,S2,S11,S12,S33,S44]=mieangles(coeffs, thetar);
+    subplot(2,2,peak)
+    polar(thetar,(abs(S1).^2+abs(S2).^2)/2,'b'), hold('on') % unpol
+    polar(thetar,(abs(S1).^2)/2,'g'), hold('on') % s
+    polar(thetar,(abs(S2).^2)/2,'c'), hold('on') % p
+    %polar(thetar,S11,'b'), hold('on')
+    %polar(thetar,S12,'r'), hold('on')
+    %polar(thetar,S33,'g'), hold('on')
+    %polar(thetar+pi/2,S44,'c'), hold('on') % complex
+    view([90 -90]) % put 0 @ top
+    legend('u','s','p')
+    title(['Scatter: ', num2str(fx(L1)), xunit])
+    drawnow
+    pause(0)
+    
+    %% setup for near-field plot
+    if do_fields
+        subplot(2,2,peak+2)
+        Nx=round(sbox(1)*nbox);
+        Ny=round(sbox(2)*nbox);
+        Nz=round(sbox(3)*nbox);
+        q=a(end); % size of box
+        x=linspace(-1,1,Nx)*sbox(1)*q; % E incident polarization
+        y=linspace(-1,1,Ny)*sbox(2)*q;
+        z=linspace(-1,1,Nz)*sbox(3)*q; % propagation direction
+        
+        % would be quite slow doing 3d volume
+        % do 3 slices instead
+        
+        % calc
+        [X,Y,Z]=meshgrid(x,y,z);
+        [E,H,M]=fmiefields(X,Y,Z,coeffs,L1,av,m(k,:),mu(k,:));
+        S=poynting(E, H);
+        e=fieldnorm(E);
+        h=fieldnorm(H);
+        s=fieldnorm(S);
+        
+        % slice plot
+        slice(x,y,z,eval(slicef),0,0,0)
+        shading('flat')
+        h=colorbar;
+        slicel=slicef; slicel(slicel=='.')='_';
+        h.Label.String=slicel;
+        
+        % flow plots
+        xs=linspace(min(x),max(x),5);
+        ys=linspace(min(y),max(y),5);
+        zs=min(z);
+        [Xs,Ys,Zs]=meshgrid(xs,ys,zs); % starting points
+        
+        if do_lines
+            % streamslice(X,Y,Z,S.x,S.y,S.z) % streamslice too greedy in 3D
+            h=streamline(X,Y,Z,S.x,S.y,S.z,Xs,Ys,Zs);
+            for child=1:length(h)
+                set(h(child),'Color','r');
+            end
+        end
+        
+        if do_ribbons
+            %[Sc.x, Sc.y, Sc.z]=curl(X,Y,Z,S.x,S.y,S.z);
+            h=streamribbon(X,Y,Z,S.x,S.y,S.z,Xs,Ys,Zs);
+            for child=1:length(h)
+                set(h(child),'EdgeColor','r');
+                %set(h(child),'FaceColor','r');
+            end
+        end
+        
+        if do_tubes
+            %[Sd.x, Sd.y, Sd.z]=divergence(X,Y,Z,S.x,S.y,S.z);
+            h=streamtube(X,Y,Z,S.x,S.y,S.z,Xs,Ys,Zs);
+            for child=1:length(h)
+                set(h(child),'EdgeColor','r');
+                %set(h(child),'FaceColor','r');
+            end
+        end
+        
+        % label plot
+        xlabel('x (E_{inc})')
+        ylabel('y (H_{inc})')
+        zlabel('z (k_{inc})')
+        axis('image')
+        title(['Near-field: ',num2str(fx(L1)), xunit])
+        
+        drawnow
+        pause(0)
+        
+    end
+end
