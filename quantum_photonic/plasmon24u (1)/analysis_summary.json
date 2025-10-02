@@ -1,0 +1,37 @@
+{
+  "Basic_Example": {
+    "metal": "K",
+    "geometry": "a=20nm, f=0.3",
+    "peak1_eV": 0.7168364091072731,
+    "peak1_nm": 1729.8228497409325,
+    "peak2_eV": 3.5433260843955363,
+    "peak2_nm": 349.95367924528296,
+    "splitting_eV": 2.826489675288263,
+    "interpretation": "Clear plasmon hybridization with large splitting due to low \u03c9_p of K"
+  },
+  "Thickness_Study": {
+    "metal": "Au",
+    "f_range": [
+      0.1,
+      0.9
+    ],
+    "min_splitting": 0.0,
+    "max_splitting": 3.1619695576335145,
+    "trend": "Splitting increases with f (opposite to simple quasistatic prediction)",
+    "interpretation": "Retardation effects important; modes degenerate for thin shells",
+    "agrees_with_simple_theory": false
+  },
+  "Metal_Study": {
+    "metals": [
+      "Au",
+      "Ag",
+      "Al",
+      "Cu"
+    ],
+    "highest_energy": "Al",
+    "lowest_energy": "Cu",
+    "trend": "Peak energy correlates directly with plasma frequency \u03c9_p",
+    "interpretation": "Drude model successfully predicts material-dependent trends",
+    "agrees_with_theory": true
+  }
+}
